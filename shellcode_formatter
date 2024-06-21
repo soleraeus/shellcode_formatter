@@ -31,17 +31,18 @@ def main():
     print(f"Objcopy saved in {objcpy}")
 
     shellcode = create_tmp_file("the output")
-    out = subprocess.run(["hexdump", "-v", "-e", '"\x5c\x5c""x" 1/1 "%02x" ""', objcpy], stdout=subprocess.PIPE)
-    if out.returncode != 0:
-        print("Could not hexdump the binary copy")
-        exit(1)
+    code = b""
+    with open(objcpy, "rb") as f:
+        code = f.read()
+    code = "".join([f"\\x{i:02x}" for i in code])
     with open(shellcode, "wb") as f:
-        f.write(out.stdout)
+        f.write(bytes(code.encode("utf-8")))
     print(f"Shellcode saved in {shellcode}")
-    print(str(out.stdout.decode("utf-8")))
-
+    print(f"\nYou can use the following payload in your script:\n{code}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(f"Usage: {sys.argv[0]} <format> <assembly_file>")
+        exit(1)
     main()
+    exit(0)
