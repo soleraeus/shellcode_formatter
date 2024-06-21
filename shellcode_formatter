@@ -1,0 +1,47 @@
+#! /bin/python3
+
+import subprocess
+import sys
+
+def create_tmp_file(purpose: str = None) -> str:
+    out = subprocess.run(["mktemp", "-p", "/tmp", "X" * 21], stdout=subprocess.PIPE)
+    if out.returncode != 0:
+        if purpose:
+            print(f"Could not create temporary file for {purpose}")
+        else:
+            print(f"Could not create temporary file")
+        exit(1)
+    file = str(out.stdout.decode("utf-8"))[:-1]
+    return file
+    
+
+def main():
+    obj = create_tmp_file("the object")
+    out = subprocess.run(["nasm", "-f", sys.argv[1], sys.argv[2], "-o", obj])
+    if out.returncode != 0:
+        print("Could not compile with nasm")
+        exit(1)
+    print(f"Object saved in {obj}")
+
+    objcpy = create_tmp_file("the binary copy")
+    out = subprocess.run(["objcopy", "-Obinary", obj, objcpy])
+    if out.returncode != 0:
+        print("Could not objcopy")
+        exit(1)
+    print(f"Objcopy saved in {objcpy}")
+
+    shellcode = create_tmp_file("the output")
+    out = subprocess.run(["hexdump", "-v", "-e", '"\x5c\x5c""x" 1/1 "%02x" ""', objcpy], stdout=subprocess.PIPE)
+    if out.returncode != 0:
+        print("Could not hexdump the binary copy")
+        exit(1)
+    with open(shellcode, "wb") as f:
+        f.write(out.stdout)
+    print(f"Shellcode saved in {shellcode}")
+    print(str(out.stdout.decode("utf-8")))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <format> <assembly_file>")
+    main()
